@@ -5,7 +5,9 @@
     <color name="colorAccent">#FFFFFF</color>
     <color name="background">#FFFFFF</color>
     <color name="black">#DA000000</color>
-    <!--<color name="colorAccent">#DA000000</color>-->
-    <!--<color name="background">#DA000000</color>-->
+    <color name="gray">#3A3939</color>
     <color name="textColorPrimary">#6F6F6F</color>
+
+    <color name="white">#ffffff</color>
+    <color name="pink">#d123c5</color>
 </resources>

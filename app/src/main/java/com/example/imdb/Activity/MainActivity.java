@@ -2,30 +2,34 @@ package com.example.imdb.Activity;
 
 import android.app.ProgressDialog;
 import android.app.SearchManager;
-import android.support.annotation.Nullable;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.net.ConnectivityManager;
 import android.support.design.widget.TabLayout;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.AppCompatSpinner;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
+import android.widget.ArrayAdapter;
 
+import com.example.imdb.Adapter.ViewPagerAdapter;
 import com.example.imdb.Fragment.GridRecyclerFragment;
-import com.example.imdb.Model.Movie;
+import com.example.imdb.Fragment.HomePageFragment;
+import com.example.imdb.Model.Model;
+import com.example.imdb.Model.OMDBMovie;
 import com.example.imdb.Model.SearchResult;
 import com.example.imdb.R;
 import com.example.imdb.Retrofit.ApiCall;
-import com.example.imdb.Utility.OnLoadMoreListener;
+import com.example.imdb.Interface.OnLoadMoreListener;
+import com.example.imdb.Utility.NetworkReceiver;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -33,21 +37,27 @@ import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
 
-    public static ArrayList<Movie> movies;
-    public GridRecyclerFragment gridFragment;
-    public SearchResult searchResult;
-    public final String TAG="MainActivity";
-
     public ProgressDialog progressDialog;
     public Toolbar toolbar;
     public ViewPager viewPager;
     public TabLayout tabLayout;
     public SearchView searchView;
+    public NetworkReceiver receiver;
 
+    //Fragments
+    public GridRecyclerFragment gridFragment;
+    public HomePageFragment homePageFragment;
+
+    //OMDBMovie Tab
+    public static ArrayList<Model> movies;
+    public SearchResult searchResult;
+    public final String TAG = "MainActivity";
 
     public boolean reachEnd;
     public String latestQuery;
     public int loadedPage;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,12 +67,12 @@ public class MainActivity extends AppCompatActivity {
         movies = new ArrayList<>();
 
         gridFragment = new GridRecyclerFragment();
-
+        homePageFragment = new HomePageFragment();
         setUpLazyLoad();
 
         progressDialog = new ProgressDialog(this);
         progressDialog.setMessage("Searching...");
-        progressDialog.setCancelable(false);
+        progressDialog.setCancelable(true);
 
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -75,29 +85,40 @@ public class MainActivity extends AppCompatActivity {
         tabLayout.setupWithViewPager(viewPager);
 
 
+        //Network Connection
+        IntentFilter filter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+        receiver = new NetworkReceiver();
+        this.registerReceiver(receiver, filter);
+
     }
 
-    public void setUpLazyLoad(){
+    public void setUpLazyLoad() {
         gridFragment.setOnLoadMoreListener(new OnLoadMoreListener() {
             @Override
             public void onLoadMore() {
                 if (!reachEnd) {
-                    movies.add(null);
-                    gridFragment.gridRecyclerAdapter.notifyItemInserted(movies.size() - 1);
+//                    movies.add(null);
+//                    gridFragment.recyclerAdapter.notifyItemInserted(movies.size() - 1);
                     getData(latestQuery, false);
                 }
-                Log.i("setOnLoadMoreListener","Called");
             }
         });
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {//must
+    public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);
         searchView = (SearchView) MenuItemCompat.getActionView(menu.findItem(R.id.action_search));
         SearchManager searchManager = (SearchManager) getSystemService(SEARCH_SERVICE);
         searchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
 
+        searchView.setOnSearchClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent=new Intent(getBaseContext(),SearchActivity.class);
+                startActivity(intent);
+            }
+        });
 
         SearchView.OnQueryTextListener queryTextListener = new SearchView.OnQueryTextListener() {
             @Override
@@ -105,7 +126,7 @@ public class MainActivity extends AppCompatActivity {
                 MainActivity.this.latestQuery = query;
                 getData(query, true);
                 if (progressDialog != null && !progressDialog.isShowing()) {
-                   //progressDialog.show();
+                    progressDialog.show();
                 }
                 searchView.clearFocus();
                 return true;
@@ -121,29 +142,28 @@ public class MainActivity extends AppCompatActivity {
         return super.onCreateOptionsMenu(menu);
     }
 
-
     public void getData(final String query, boolean newQuery) {
         if (newQuery) {
             movies.clear();
-            gridFragment.gridRecyclerAdapter.notifyDataSetChanged();
+            gridFragment.recyclerAdapter.notifyDataSetChanged();
             loadedPage = 0;
             reachEnd = false;
-            ApiCall.Factory.getInstance().search(query, "movie", 1).enqueue(new Callback<SearchResult>() {
+            ApiCall.Factory.OMDB().search(query, "movie", 1).enqueue(new Callback<SearchResult>() {
                 @Override
                 public void onResponse(Call<SearchResult> call, Response<SearchResult> response) {
                     searchResult = response.body();
                     if (searchResult.getResponse().equals("True")) {
-                        //Movie Found
+                        //OMDBMovie Found
                         loadedPage = 1;
                         getMovies();
                         gridFragment.message.setVisibility(View.GONE);
-                        gridFragment.movieGridRecycler.setVisibility(View.VISIBLE);
+                        gridFragment.recyclerView.setVisibility(View.VISIBLE);
                     } else {
-                        //Movie not found
+                        //OMDBMovie not found
                         progressDialog.dismiss();
                         gridFragment.message.setText("No movies found. Try again.");
                         gridFragment.message.setVisibility(View.VISIBLE);
-                        gridFragment.movieGridRecycler.setVisibility(View.GONE);
+                        gridFragment.recyclerView.setVisibility(View.GONE);
                     }
                 }
 
@@ -153,28 +173,25 @@ public class MainActivity extends AppCompatActivity {
                     progressDialog.dismiss();
                     gridFragment.message.setText("Query request failed. Try again");
                     gridFragment.message.setVisibility(View.VISIBLE);
-                    gridFragment.movieGridRecycler.setVisibility(View.GONE);
+                    gridFragment.recyclerView.setVisibility(View.GONE);
                 }
             });
         } else {
-            Log.i("newQuery",newQuery+"");
             if (!reachEnd) {
                 loadedPage++;
-                Log.i("PageLoaded",loadedPage+"");
-                ApiCall.Factory.getInstance().search(query, "movie", loadedPage).enqueue(new Callback<SearchResult>() {
+                ApiCall.Factory.OMDB().search(query, "movie", loadedPage).enqueue(new Callback<SearchResult>() {
                     @Override
                     public void onResponse(Call<SearchResult> call, Response<SearchResult> response) {
                         searchResult = response.body();
                         if (searchResult.getResponse().equals("True")) {
-                            //Movie Found
+                            //OMDBMovie Found
                             getMovies();
                         } else {
                             //Reached End
                             movies.remove(movies.size() - 1);
                             reachEnd = true;
-                            Log.i("reachedEnd",reachEnd+"");
-                            gridFragment.gridRecyclerAdapter.notifyItemRemoved(movies.size());
-                            gridFragment.gridRecyclerAdapter.notifyDataSetChanged();
+                            gridFragment.recyclerAdapter.notifyItemRemoved(movies.size());
+                            gridFragment.recyclerAdapter.notifyDataSetChanged();
                             gridFragment.setLoaded();
                         }
                     }
@@ -182,8 +199,8 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onFailure(Call<SearchResult> call, Throwable t) {
                         movies.remove(movies.size() - 1);
-                        gridFragment.gridRecyclerAdapter.notifyItemRemoved(movies.size());
-                        gridFragment.gridRecyclerAdapter.notifyDataSetChanged();
+                        gridFragment.recyclerAdapter.notifyItemRemoved(movies.size());
+                        gridFragment.recyclerAdapter.notifyDataSetChanged();
                         gridFragment.setLoaded();
                     }
                 });
@@ -195,17 +212,17 @@ public class MainActivity extends AppCompatActivity {
         final int[] count = {0};
         for (int i = 0; i < searchResult.getSearch().size(); i++) {
             String imdbId = searchResult.getSearch().get(i).getImdbID();
-            ApiCall.Factory.getInstance().getMovie(imdbId).enqueue(new Callback<Movie>() {
+            ApiCall.Factory.OMDB().getMovie(imdbId).enqueue(new Callback<OMDBMovie>() {
                 @Override
-                public void onResponse(Call<Movie> call, Response<Movie> response) {
+                public void onResponse(Call<OMDBMovie> call, Response<OMDBMovie> response) {
                     movies.add(response.body());
-                    Log.d(TAG, movies.get(movies.size() - 1).getTitle());
+                    gridFragment.recyclerAdapter.notifyItemInserted(movies.size() - 1);
                     count[0]++;
                     isDataFetchComplete(count[0]);
                 }
 
                 @Override
-                public void onFailure(Call<Movie> call, Throwable t) {
+                public void onFailure(Call<OMDBMovie> call, Throwable t) {
                     Log.e(TAG, "Failure : " + t.getMessage());
                     count[0]++;
                     isDataFetchComplete(count[0]);
@@ -214,54 +231,18 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void isDataFetchComplete(int count){
+    public void isDataFetchComplete(int count) {
         if (searchResult.getResponse().equals("True") && count == searchResult.getSearch().size()) {
             progressDialog.dismiss();
-            for (int i = 0; i < movies.size(); i++) {
-                if (movies.get(i) == null) {
-                    movies.remove(i);
-                    gridFragment.gridRecyclerAdapter.notifyItemRemoved(i);
-                }
-            }
-            gridFragment.gridRecyclerAdapter.notifyDataSetChanged();
             gridFragment.setLoaded();
         }
     }
 
     public void setViewPager(ViewPager viewPager) {
         ViewPagerAdapter viewPagerAdapter = new ViewPagerAdapter(getSupportFragmentManager());
-        viewPagerAdapter.addFragment(gridFragment, "Movies");
+        viewPagerAdapter.addFragment(homePageFragment, "HOME");
+        viewPagerAdapter.addFragment(gridFragment, "MOVIES");
         viewPager.setAdapter(viewPagerAdapter);
-    }
-
-    class ViewPagerAdapter extends FragmentPagerAdapter {
-        public List<Fragment> fragments = new ArrayList<>();
-        public List<String> fragmentTitles = new ArrayList<>();
-
-        public ViewPagerAdapter(FragmentManager fragmentManager) {
-            super(fragmentManager);
-        }
-
-        @Override
-        public Fragment getItem(int position) {
-            return fragments.get(position);
-        }
-
-        @Override
-        public int getCount() {
-            return fragments.size();
-        }
-
-        @Nullable
-        @Override
-        public CharSequence getPageTitle(int position) {
-            return fragmentTitles.get(position);
-        }
-
-        public void addFragment(Fragment fragment, String title) {
-            fragments.add(fragment);
-            fragmentTitles.add(title);
-        }
     }
 
 }

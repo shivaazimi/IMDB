@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+    <RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginBottom="10dp">
+
+        <RatingBar
+            android:id="@+id/ratingBar"
+            style="@android:style/Widget.Holo.RatingBar.Small"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_marginBottom="5dp"
+            android:numStars="1"
+            android:progressTint="#ffffff"
+            android:secondaryProgressTint="@color/colorPrimary"
+            android:progressBackgroundTint="#000000"
+            android:scaleX="2"
+            android:scaleY="2"
+            android:stepSize="0.1"
+            android:layout_marginTop="5dp"/>
+
+        <TextView
+            android:id="@+id/averageVote"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/ratingBar"
+            android:layout_centerHorizontal="true"
+            android:textColor="@color/colorAccent"
+            android:textSize="18sp"
+            android:textStyle="bold"/>
+
+
+        <TextView
+            android:id="@+id/totalVote"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/averageVote"
+            android:layout_centerHorizontal="true"
+            android:textColor="@color/colorAccent"/>
+
+    </RelativeLayout>
+
+

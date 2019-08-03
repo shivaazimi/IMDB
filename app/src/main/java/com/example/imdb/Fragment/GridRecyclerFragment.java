@@ -6,31 +6,29 @@ import android.support.v4.app.Fragment;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.util.DisplayMetrics;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import com.example.imdb.Adapter.GridRecyclerAdapter;
+import com.example.imdb.Adapter.HorizontalRecyclerAdapter;
 import com.example.imdb.Activity.MainActivity;
-import com.example.imdb.Model.Movie;
+import com.example.imdb.Model.Model;
 import com.example.imdb.R;
 import com.example.imdb.Utility.GridSpacingItemDecoration;
-import com.example.imdb.Utility.OnLoadMoreListener;
+import com.example.imdb.Interface.OnLoadMoreListener;
 
 import java.util.ArrayList;
 
 public class GridRecyclerFragment extends Fragment {
 
 
-    public RecyclerView movieGridRecycler;
+    public RecyclerView recyclerView;
     public GridLayoutManager gridLayoutManager;
-    public GridRecyclerAdapter gridRecyclerAdapter;
+    public HorizontalRecyclerAdapter recyclerAdapter;
     public TextView message;
-    private ArrayList<Movie> movies;
+    private ArrayList<Model> models;
     private OnLoadMoreListener mOnLoadMoreListener;
     public boolean loading;
     public int totalItemCount;
@@ -60,38 +58,37 @@ public class GridRecyclerFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_grid_recycler, container, false);
+        return inflater.inflate(R.layout.grid_recycler, container, false);
     }
-
 
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        movies= MainActivity.movies;
+        models = MainActivity.movies;
     }
 
     @Override
     public void onViewCreated( View view,  Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        movieGridRecycler=view.findViewById(R.id.grid_recycler);
+        recyclerView =view.findViewById(R.id.grid_recycler);
         message=view.findViewById(R.id.message);
 
-        if(movies!=null) {
+        if(models !=null) {
             //Grid Manager
             gridLayoutManager = new GridLayoutManager(getContext(), 2);
-            movieGridRecycler.setLayoutManager(gridLayoutManager);
+            recyclerView.setLayoutManager(gridLayoutManager);
 
             //RecycleView Adapter
-            gridRecyclerAdapter = new GridRecyclerAdapter(getContext(), movies);
-            movieGridRecycler.setAdapter(gridRecyclerAdapter);
+            recyclerAdapter = new HorizontalRecyclerAdapter(getContext(), models);
+            recyclerView.setAdapter(recyclerAdapter);
 
             //item Animator
-            movieGridRecycler.setItemAnimator(new DefaultItemAnimator());
+            recyclerView.setItemAnimator(new DefaultItemAnimator());
 
             //item Decoration
-            movieGridRecycler.addItemDecoration(new GridSpacingItemDecoration(2, dpToPx(7), false));
+            recyclerView.addItemDecoration(new GridSpacingItemDecoration(2, dpToPx(7), false));
 
-            movieGridRecycler.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
 
                 @Override
                 public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
@@ -99,9 +96,7 @@ public class GridRecyclerFragment extends Fragment {
                     totalItemCount=gridLayoutManager.getItemCount();
                     lastVisibleItem=gridLayoutManager.findLastVisibleItemPosition();
 
-                    Log.i("onScroll","totalItemCount :"+totalItemCount+" lastVisibleItem : "+lastVisibleItem);
                     if(!loading && totalItemCount<=(lastVisibleItem+visibleThreshold)){
-                        Log.i("exceed threashold", "mustBeLoad");
                         if(mOnLoadMoreListener!=null){
                             mOnLoadMoreListener.onLoadMore();
                         }
@@ -111,12 +106,11 @@ public class GridRecyclerFragment extends Fragment {
 
             });
         }
-        movieGridRecycler.setVisibility(View.GONE);
+        recyclerView.setVisibility(View.GONE);
         message.setVisibility(View.VISIBLE);
     }
 
     public int dpToPx(int dp){
-        DisplayMetrics metrics=getResources().getDisplayMetrics();
         return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,dp,
                 getResources().getDisplayMetrics()));
 
@@ -127,7 +121,6 @@ public class GridRecyclerFragment extends Fragment {
         super.onDetach();
         mOnLoadMoreListener = null;
     }
-
 
     public void setLoaded(){
         loading=false;

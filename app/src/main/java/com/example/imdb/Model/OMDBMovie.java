@@ -3,7 +3,8 @@ package com.example.imdb.Model;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
-public class Movie {
+public class OMDBMovie extends Model{
+
 
     @SerializedName("Title")
     @Expose
@@ -65,6 +66,11 @@ public class Movie {
     @SerializedName("Response")
     @Expose
     private String response;
+
+
+    public OMDBMovie(){
+        super(MOVIE_TYPE);
+    }
 
     public String getTitle() {
         return title;
